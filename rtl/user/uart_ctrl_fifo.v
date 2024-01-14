@@ -59,19 +59,10 @@ always@(posedge clk or negedge rst_n)begin
                 stat_reg[5:4] <= 2'b00;
         end
 
-        if(i_tx_busy)
-            stat_reg[3:2] <= 2'b10;
-        else
-            stat_reg[3:2] <= 2'b01;
-
         if(i_frame_err && i_rx_busy)
             stat_reg[5] <= 1'b1;
-        else if(i_irq && !stat_reg[1] && !i_frame_err)
-            stat_reg[1:0] <= 2'b10;
         else if(i_rx_busy && stat_reg[1:0]==2'b10)
             stat_reg[4] <= 1'b1;
-        else if((i_wb_valid && i_wb_adr==RX_DATA && !i_wb_we && stat_reg[1:0]==2'b10) || i_frame_err)
-            stat_reg[1:0] <= 2'b01;
     end
 end
 
@@ -114,6 +105,8 @@ always @(posedge clk or negedge rst_n) begin
                 end
             end
         endcase
+        if(i_wb_valid && !i_wb_we && i_wb_adr == STAT_REG)
+            o_wb_dat <= stat_reg;
     end
 end
 

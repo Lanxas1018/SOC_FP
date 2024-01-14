@@ -87,7 +87,7 @@ module sdr (
     // address mapping scheme, need to reduce its size
     // Each Bank is 4KB (one BRAM) = 32bit * 1024
     // parameter mem_sizes = 2**(ROW_BITS+COL_BITS) - 1;
-    parameter mem_sizes = 2048;
+    parameter mem_sizes = 1024;
     
     // timing parameters  - in terms of # of tCK
     parameter tCK              =     6.0; // tCK    ns    Nominal Clock Cycle Time
@@ -126,15 +126,15 @@ module sdr (
     //localparam tRRD              = 2;    // Active bank to Active bank command time
     
 
-    parameter ADDR_BITS         = 16;   // ROW address: 8K A[12:0], COL address [9:0] + A11 (Auto-precharge)
+    parameter ADDR_BITS         = 13;   // ROW address: 8K A[12:0], COL address [9:0] + A11 (Auto-precharge)
     parameter BA_BITS           = 2;    // 4 banks
     parameter DQ_BITS           = 32;   // 32-bit
     parameter DM_BITS           = 4;    // 4 bytes
-    parameter COL_BITS          = 15;   // # of COL module sdr
+    parameter COL_BITS          = 10;   // # of COL module sdr
     
     
     
-    parameter BURST_LEN         = 8;
+    
     
     
     
@@ -177,6 +177,7 @@ module sdr (
     
     
     
+    
 
 // Accesss Bank0-3 mapped to BRAM
     //reg         [DQ_BITS - 1 : 0] Bank0 [0 : mem_sizes];
@@ -195,13 +196,12 @@ module sdr (
     reg        [ADDR_BITS - 1: 0] Mode_reg;
     reg         [DQ_BITS - 1 : 0] Dq_reg, Dq_dqm;
     reg        [COL_BITS - 1 : 0] Col_temp, Burst_counter;
-    reg                           Burst_act;
 
     reg                           Act_b0, Act_b1, Act_b2, Act_b3;   // Bank Activate
     reg                           Pc_b0, Pc_b1, Pc_b2, Pc_b3;       // Bank Precharge
 
     reg                   [1 : 0] Bank_precharge       [0 : 3];     // Precharge Command
-    reg                           A10_precharge        [0 : 3];     // Addr[13] = 1 (All banks)
+    reg                           A10_precharge        [0 : 3];     // Addr[10] = 1 (All banks)
     reg                           Auto_precharge       [0 : 3];     // RW Auto Precharge (Bank)
     reg                           Read_precharge       [0 : 3];     // R  Auto Precharge
     reg                           Write_precharge      [0 : 3];     //  W Auto Precharge
@@ -280,10 +280,6 @@ module sdr (
     `define   BST       6
     `define   LMR       7
 
-    // precharge bit
-    `define   pb_bit   13
-    `define   col_bit  12:0
-    `define   mem_bit  14:4
 // Remove timing check
 /*
     // These timing dynamically adjust based on CAS Latency
@@ -351,8 +347,7 @@ module sdr (
     reg  [3:0] bwen;
     always@(*)begin
         bwen = 4'b0000;
-        bren = {4{Burst_act}};
-        //bren = 4'b0000;
+        bren = 4'b0000;
         if(Data_in_enable)begin//Data_in_enable||Data_out_enable
             case(Bank_temp)
                 2'b00:begin
@@ -376,19 +371,19 @@ module sdr (
             case(Bank_temp)
                 2'b00:begin
                     bwen = 4'b0000;
-                    //bren = 4'b0001;
+                    bren = 4'b0001;
                 end
                 2'b01:begin
                     bwen = 4'b0000;
-                    //bren = 4'b0010;
+                    bren = 4'b0010;
                 end
                 2'b10:begin
                     bwen = 4'b0000;
-                    //bren = 4'b0100;
+                    bren = 4'b0100;
                 end
                 2'b11:begin
                     bwen = 4'b0000;
-                    //bren = 4'b1000;
+                    bren = 4'b1000;
                 end
             endcase
         end
@@ -398,8 +393,8 @@ module sdr (
         .clk(Sys_clk), 
         .we(bwen[0]), 
         .re(bren[0]), 
-        .waddr(Col_brst[`mem_bit]), 
-        .raddr(Col[`mem_bit]), 
+        .waddr(Col_brst[9:0]), 
+        .raddr(Col_brst[9:0]), 
         .d(bdi[0]), 
         .q(bdq[0])
     );
@@ -408,8 +403,8 @@ module sdr (
         .clk(Sys_clk), 
         .we(bwen[1]), 
         .re(bren[1]), 
-        .waddr(Col_brst[`mem_bit]), 
-        .raddr(Col[`mem_bit]), 
+        .waddr(Col_brst[9:0]), 
+        .raddr(Col_brst[9:0]), 
         .d(bdi[1]), 
         .q(bdq[1])
     );
@@ -418,8 +413,8 @@ module sdr (
         .clk(Sys_clk), 
         .we(bwen[2]), 
         .re(bren[2]), 
-        .waddr(Col_brst[`mem_bit]), 
-        .raddr(Col[`mem_bit]), 
+        .waddr(Col_brst[9:0]), 
+        .raddr(Col_brst[9:0]), 
         .d(bdi[2]), 
         .q(bdq[2])
     );
@@ -428,8 +423,8 @@ module sdr (
         .clk(Sys_clk), 
         .we(bwen[3]), 
         .re(bren[3]), 
-        .waddr(Col_brst[`mem_bit]), 
-        .raddr(Col[`mem_bit]), 
+        .waddr(Col_brst[9:0]), 
+        .raddr(Col_brst[9:0]), 
         .d(bdi[3]), 
         .q(bdq[3])
     );
@@ -502,19 +497,19 @@ module sdr (
             if (Prech_enable == 1'b1) begin
                 Command[Cas_latency - 1] <= `PRECH;
                 Bank_precharge[Cas_latency - 1] <= Ba;
-                A10_precharge[Cas_latency - 1] <= Addr[`pb_bit];
+                A10_precharge[Cas_latency - 1] <= Addr[10];
             end
             else if (Burst_term === 1'b1) begin
                 Command[Cas_latency - 1] <= `BST;
             end
             else if (Read_enable === 1'b1) begin
                 Command[Cas_latency - 1] <= `READ;//Cas_latency - 1
-                Col_addr[Cas_latency - 1] <= Addr[`col_bit];//Cas_latency - 1
+                Col_addr[Cas_latency - 1] <= Addr;//Cas_latency - 1
                 Bank_addr[Cas_latency - 1] <= Ba;//Cas_latency - 1
             end    
             else if (Write_enable == 1'b1) begin
                 Command[Cas_latency - 1] <= `WRITE;//0
-                Col_addr[Cas_latency - 1] <= Addr[`col_bit];//0
+                Col_addr[Cas_latency - 1] <= Addr;//0
                 Bank_addr[Cas_latency - 1] <= Ba;//0
             end else begin
                 {Command[2]} <= {Command[3]};
@@ -534,8 +529,8 @@ module sdr (
                 Bank_temp <= Ba;//Bank_addr[2]
                 Bank_temp_buf <= Bank_temp;
             end else begin
-            	if(!Burst_act) Bank_temp <= Bank_addr[0];
-            	Bank_temp_buf <= Bank_temp;   
+                Bank_temp <= Bank_addr[0];
+                Bank_temp_buf <= Bank_temp;
             end
         end
     end
@@ -545,19 +540,14 @@ module sdr (
         if(!Rst_n) begin
             // Mode_reg =  13'b000_0_00_011_0_011;  // Cas-latency = 3; burst-length = 8; write burst
             // Currently we run at non-burst mode
-            Mode_reg <=  13'b000_0_00_011_0_011;  // Cas-latency = 3; burst-length = 8; No.9 write burst
+            Mode_reg <=  13'b000_1_00_011_0_000;  // Cas-latency = 3; burst-length = 1; No write burst
         end else if (Mode_reg_enable === 1'b1) begin
             // Register Mode
-            Mode_reg <= 13'b000_0_00_011_0_011;//Addr;
+            Mode_reg <= 13'b000_1_00_011_0_000;//Addr;
         end
     end 
 
     // Active Block (Latch Bank Address and Row Address)
-    always@(*)begin
-    	Col = Col_brst + (Burst_counter<<4);
-    
-    end
-  
     reg Error;          // Set if error happen
     always @(posedge Sys_clk or negedge Rst_n) begin
         if(!Rst_n)begin
@@ -579,8 +569,7 @@ module sdr (
             B2_row_addr <= {ADDR_BITS{1'b0}};
             B3_row_addr <= {ADDR_BITS{1'b0}};
             
-            Burst_counter <= 0;
-            Burst_act     <= 1'b0;
+            
             for(i=0;i<4;i=i+1)begin
                 bdi[i] <= {DQ_BITS{1'b0}};
             end
@@ -630,25 +619,25 @@ module sdr (
             if (Prech_enable == 1'b1) begin
     
                 // Precharge Bank 0
-                if ((Addr[`pb_bit] === 1'b1 || (Addr[`pb_bit] === 1'b0 && Ba === 2'b00)) && Act_b0 === 1'b1) begin
+                if ((Addr[10] === 1'b1 || (Addr[10] === 1'b0 && Ba === 2'b00)) && Act_b0 === 1'b1) begin
                     Act_b0 <= 1'b0;
                     Pc_b0 <= 1'b1;
                 end
     
                 // Precharge Bank 1
-                if ((Addr[`pb_bit] === 1'b1 || (Addr[`pb_bit] === 1'b0 && Ba === 2'b01)) && Act_b1 === 1'b1) begin
+                if ((Addr[10] === 1'b1 || (Addr[10] === 1'b0 && Ba === 2'b01)) && Act_b1 === 1'b1) begin
                     Act_b1 <= 1'b0;
                     Pc_b1 <= 1'b1;
                 end
     
                 // Precharge Bank 2
-                if ((Addr[`pb_bit] === 1'b1 || (Addr[`pb_bit] === 1'b0 && Ba === 2'b10)) && Act_b2 === 1'b1) begin
+                if ((Addr[10] === 1'b1 || (Addr[10] === 1'b0 && Ba === 2'b10)) && Act_b2 === 1'b1) begin
                     Act_b2 <= 1'b0;
                     Pc_b2 <= 1'b1;
                 end
     
                 // Precharge Bank 3
-                if ((Addr[`pb_bit] === 1'b1 || (Addr[`pb_bit] === 1'b0 && Ba === 2'b11)) && Act_b3 === 1'b1) begin
+                if ((Addr[10] === 1'b1 || (Addr[10] === 1'b0 && Ba === 2'b11)) && Act_b3 === 1'b1) begin
                     Act_b3 <= 1'b0;
                     Pc_b3 <= 1'b1;
                 end
@@ -711,7 +700,7 @@ module sdr (
                 end
     
                 // Read with Auto Precharge
-                if (Addr[`pb_bit] == 1'b1) begin
+                if (Addr[10] == 1'b1) begin
                     Auto_precharge[Ba] <= 1'b1;
                     Count_precharge[Ba] <= 0;
                     RW_interrupt_bank <= Ba;
@@ -724,7 +713,9 @@ module sdr (
                 if ((Ba == 2'b00 && Pc_b0 == 1'b1) || (Ba == 2'b01 && Pc_b1 == 1'b1) ||
                     (Ba == 2'b10 && Pc_b2 == 1'b1) || (Ba == 2'b11 && Pc_b3 == 1'b1)) begin
                     Error <= 1;
-
+`ifdef SIM
+                    $display("%m : at time %t ERROR: Bank is not Activated for Write", $time);
+`endif
                 end
 
                 // Latch Write command, Bank, and Column
@@ -739,6 +730,10 @@ module sdr (
                     // Interrupting a Write with Autoprecharge
                     if (Auto_precharge[RW_interrupt_bank] == 1'b1 && Write_precharge[RW_interrupt_bank] == 1'b1) begin
                         RW_interrupt_write[RW_interrupt_bank] <= 1'b1;
+`ifdef SIM
+                        // Display debug message
+                        $display ("%m : at time %t NOTE : Read Bank %d interrupt Write Bank %d with Autoprecharge", $time, Ba, RW_interrupt_bank);
+`endif
                     end
                 end
 
@@ -748,12 +743,17 @@ module sdr (
                     
                     // Interrupting a Read with Autoprecharge
                     if (Auto_precharge[RW_interrupt_bank] == 1'b1 && Read_precharge[RW_interrupt_bank] == 1'b1) begin
-                        RW_interrupt_read[RW_interrupt_bank] <= 1'b1;        
+                        RW_interrupt_read[RW_interrupt_bank] <= 1'b1;
+    
+                        // Display debug message
+`ifdef SIM           
+                        $display ("%m : at time %t NOTE : Write Bank %d interrupt Read Bank %d with Autoprecharge", $time, Ba, RW_interrupt_bank);
+`endif             
                     end
                 end
     
                 // Write with Auto Precharge
-                if (Addr[`pb_bit] == 1'b1) begin
+                if (Addr[10] == 1'b1) begin
                     Auto_precharge[Ba] <= 1'b1;
                     Count_precharge[Ba] <= 0;
                     RW_interrupt_bank <= Ba;
@@ -765,28 +765,27 @@ module sdr (
             if (Read_enable || Command[0] == `WRITE) begin//Command[2] == `READ
                 if(Read_enable)begin//Command[2] == `READ
                     Bank <= Ba;//Bank_addr[2]
-                    //Col <= Addr;//Col_addr[2]
-                    Col_brst <= Addr[`col_bit];//Col_addr[2]
+                    Col <= Addr;//Col_addr[2]
+                    //Col_brst <= Addr;//Col_addr[2]
                     case (Ba)//Bank_addr[2]
-                        2'b00 : Row <= B0_row_addr;
-                        2'b01 : Row <= B1_row_addr;
-                        2'b10 : Row <= B2_row_addr;
-                        2'b11 : Row <= B3_row_addr;
+                        2'b00 : begin Row <= B0_row_addr; Col_brst <= {B0_row_addr[3:0], Addr[9:2]}; end
+                        2'b01 : begin Row <= B1_row_addr; Col_brst <= {B1_row_addr[3:0], Addr[9:2]}; end
+                        2'b10 : begin Row <= B2_row_addr; Col_brst <= {B2_row_addr[3:0], Addr[9:2]}; end
+                        2'b11 : begin Row <= B3_row_addr; Col_brst <= {B3_row_addr[3:0], Addr[9:2]}; end
                     endcase
+                    Burst_counter <= 0;
                 end else begin
                     Bank <= Bank_addr[0];
-                    //Col <= Col;// + Burst_counter;
-                    Col_brst <= Col_addr[0];
+                    Col <= Col_addr[0];
+                    //Col_brst <= Col_addr[0];
                     case (Bank_addr[0])
-                        2'b00 : Row <= B0_row_addr;
-                        2'b01 : Row <= B1_row_addr;
-                        2'b10 : Row <= B2_row_addr;
-                        2'b11 : Row <= B3_row_addr;
+                        2'b00 : begin Row <= B0_row_addr; Col_brst <= {B0_row_addr[3:0], Col_addr[0][9:2]}; end
+                        2'b01 : begin Row <= B1_row_addr; Col_brst <= {B1_row_addr[3:0], Col_addr[0][9:2]}; end
+                        2'b10 : begin Row <= B2_row_addr; Col_brst <= {B2_row_addr[3:0], Col_addr[0][9:2]}; end
+                        2'b11 : begin Row <= B3_row_addr; Col_brst <= {B3_row_addr[3:0], Col_addr[0][9:2]}; end
                     endcase
-                    
+                    Burst_counter <= 0;
                 end
-                
-                
                 //Data_in_enable = 1'b0;
                 //Data_out_enable = 1'b1;
                 //if(Command[0] == `READ) begin
@@ -805,16 +804,78 @@ module sdr (
                     endcase
                 end  
             end 
-            
-            Col_temp <= Col;
-            if(Read_enable) Burst_act <= 1'b1;
-            else if(Burst_counter>=BURST_LEN-1) Burst_act <= 1'b0;
-            
-            if(Burst_counter>=BURST_LEN-1) Burst_counter <= 0;
-            else if(Burst_act)   Burst_counter <= Burst_counter+1;
-               
-                    
-                    
+
+// `ifdef SIM
+//             // Display debug message
+//             if (Dqm !== 2'b11) begin
+//                 // Record tWR for manual precharge
+//                 WR_chkm [Bank] = $time;
+
+//                 if (Debug) begin
+//                     $display("%m : at time %t WRITE: Bank = %d Row = %d, Col = %d, Data = %h", $time, Bank, Row, Col, Dq_dqm);
+//                 end
+//             end else begin
+//                 if (Debug) begin
+//                     $display("%m : at time %t WRITE: Bank = %d Row = %d, Col = %d, Data = Hi-Z due to DQM", $time, Bank, Row, Col);
+//                 end
+//             end
+//             // Advance burst counter subroutine
+//             #tHZ Burst_decode;
+// `endif     
+//             end 
+//             else if (Data_out_enable == 1'b1) begin                         // Reading Data from Memory
+//                 // Array buffer
+//                 //case (Bank)   
+//                 //    2'b00 : Dq_reg <= bdq[0];//Dq_dqm = Bank0 [{Row, Col}];
+//                 //    2'b01 : Dq_reg <= bdq[1];//Dq_dqm = Bank1 [{Row, Col}];
+//                 //    2'b10 : Dq_reg <= bdq[2];//Dq_dqm = Bank2 [{Row, Col}];
+//                 //    2'b11 : Dq_reg <= bdq[3];//Dq_dqm = Bank3 [{Row, Col}];
+//                 //endcase
+//                 // Dqm operation
+// `ifdef x4
+//                 if (Dqm_reg0 [0] == 1'b1) begin
+//                     Dq_dqm [ 3 : 0] = 4'bz;
+//                 end
+// `elsif x8
+//                 if (Dqm_reg0 [0] == 1'b1) begin
+//                     Dq_dqm [ 7 : 0] = 8'bz;
+//                 end
+// `elsif x16
+//                 if (Dqm_reg0 [0] == 1'b1) begin
+//                     Dq_dqm [ 7 : 0] = 8'bz;
+//                 end
+//                 if (Dqm_reg0 [1] == 1'b1) begin
+//                     Dq_dqm [15 : 8] = 8'bz;
+//                 end
+// `endif
+
+//                 // Display debug message
+//                 //Dq_reg = #tAC Dq_dqm;
+// `ifdef SIM
+//                 if (Debug) begin
+//                     $display("%m : at time %t READ : Bank = %d Row = %d, Col = %d, Dqm = %b, Data = %h", $time, Bank, Row, Col, Dqm_reg0, Dq_reg);
+//                 end
+// `endif
+//                 // Advance burst counter subroutine
+//                 // Burst_decode;
+//                 // Reduce the Burst_decode to handle only
+//                 //  - Sequential Burst
+//                 //  - Burst-length = 8
+//                 // Advance Burst Counter
+//                 /*
+//                 Burst_counter = Burst_counter + 1;
+//                 Col_temp = Col + 1;             // Sequntial Burst only
+//                 Col[2:0] = Col_temp[2:0];       // Burst Length = 8
+//                 if(Burst_counter >= 8) begin
+//                     Data_in_enable = 1'b0;
+//                     Data_out_enable = 1'b0;
+//                 end
+//                 // Burst Read Single Write            
+//                 if (Write_burst_mode == 1'b1) begin
+//                     Data_in_enable = 1'b0;
+//                 end 
+//                 */
+                
             if(Write_enable) begin
                 Dq_dqm <= Dqi;
             end
@@ -849,7 +910,7 @@ module sdr (
             Data_out_enable <= 1'b0;
         end else begin
             if (Prech_enable == 1'b1) begin
-                if (Data_in_enable === 1'b1 && (Bank === Ba || Addr[`pb_bit] === 1'b1)) begin
+                if (Data_in_enable === 1'b1 && (Bank === Ba || Addr[10] === 1'b1)) begin
                     Data_in_enable <= 1'b0;
                 end
             end
@@ -886,7 +947,7 @@ module sdr (
                 if(Data_in_enable)
                     Data_in_enable <= 1'b0;
                 if(Data_out_enable)
-                    Data_out_enable <= 1'b0;
+                Data_out_enable <= 1'b0;
             end
         end        
     end
@@ -947,12 +1008,10 @@ module sdr (
             end
         end
     endtask
-    
-    
 endmodule
 
 
-module blkRam #(parameter SIZE = 2048, parameter BIT_WIDTH = 8)(clk, we, re, waddr, raddr, d, q);
+module blkRam #(parameter SIZE = 8192, parameter BIT_WIDTH = 8)(clk, we, re, waddr, raddr, d, q);
     //`define RAMinitFile "./sfmx.dat"
     parameter ADDR_WIDTH = $clog2(SIZE);
     parameter COL_WIDTH = 9;

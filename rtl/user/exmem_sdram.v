@@ -5,20 +5,22 @@ module exmem #(
     parameter DELAYS = 10,
     parameter MPRJ_IO_PADS = 38
 )(
+    
     // Wishbone Slave ports (WB MI A)
-    input wire wb_clk_i,
-    input wire wb_rst_i,
-    input wire wb_valid,
-    input wire wbs_we_i,
-    input wire [3:0] wbs_sel_i,
-    input wire [31:0] wbs_dat_i,
-    input wire [31:0] wbs_adr_i,
-    output wire wbs_ack_o,
-    output wire [31:0] wbs_dat_o
+    input wb_clk_i,
+    input wb_rst_i,
+    input wb_valid,
+    input wbs_we_i,
+    input [3:0] wbs_sel_i,
+    input [31:0] wbs_dat_i,
+    input [31:0] wbs_adr_i,
+    output wbs_ack_o,
+    output [31:0] wbs_dat_o
 );
-
     wire clk;
     wire rst, rst_n;
+
+
     wire valid;
 
     wire sdram_cle;
@@ -28,13 +30,12 @@ module exmem #(
     wire sdram_we;
     wire sdram_dqm;
     wire [1:0] sdram_ba;
-    wire [15:0] sdram_a;
-    wire burst_out;
+    wire [12:0] sdram_a;
     wire [31:0] d2c_data;
     wire [31:0] c2d_data;
     wire [3:0]  bram_mask;
 
-    wire [24:0] ctrl_addr;
+    wire [22:0] ctrl_addr;
     wire ctrl_busy;
     wire ctrl_in_valid, ctrl_out_valid;
 
@@ -42,11 +43,16 @@ module exmem #(
     
     // WB MI A
     
-    assign valid = wb_valid;//(wbs_adr_i[31:16]==16'h3800)?wbs_stb_i && wbs_cyc_i:1'b0;
+    assign valid = wb_valid;//wbs_stb_i && wbs_cyc_i;
     assign ctrl_in_valid = wbs_we_i ? valid : ~ctrl_in_valid_q && valid;
     assign wbs_ack_o = (wbs_we_i) ? ~ctrl_busy && valid : ctrl_out_valid; 
     assign bram_mask = wbs_sel_i & {4{wbs_we_i}};
-    assign ctrl_addr = wbs_adr_i[24:0];
+    assign ctrl_addr = wbs_adr_i[22:0];
+
+
+
+    assign clk = wb_clk_i;
+    assign rst = wb_rst_i;
     assign rst_n = ~rst;
 
     always @(posedge clk) begin
@@ -61,7 +67,6 @@ module exmem #(
         end
     end
 
-    
     sdram_controller user_sdram_controller (
         .clk(clk),
         .rst(rst),
@@ -78,7 +83,7 @@ module exmem #(
         .sdram_dqo(c2d_data),
 
         .user_addr(ctrl_addr),
-        .rw(valid&wbs_we_i),
+        .rw(wbs_we_i),
         .data_in(wbs_dat_i),
         .data_out(wbs_dat_o),
         .busy(ctrl_busy),
@@ -100,16 +105,8 @@ module exmem #(
         .Dqi(c2d_data),
         .Dqo(d2c_data)
     );
-    /*
-    always@(posedge clk)begin
-        if(wbs_ack_o)begin
-            if(wbs_we_i)
-                $display("Write: addr = %x, data = %x, time = %d", wbs_adr_i, wbs_dat_i, $time);
-            else
-                $display("Read : addr = %x, data = %x, time = %d",wbs_adr_i, wbs_dat_o, $time);
-        end
-    end
-    */
+
+
 endmodule
 
 `default_nettype wire
