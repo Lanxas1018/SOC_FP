@@ -146,7 +146,7 @@ module counter_all_tb;
 		$dumpvars(0, counter_all_tb);
 
 		// Repeat cycles of 1000 clock edges as needed to complete testbench
-		repeat (1000) begin
+		repeat (500) begin
 			repeat (1000) @(posedge clock);
 			// $display("+1000 cycles");
 		end
@@ -245,11 +245,11 @@ module counter_all_tb;
 			uart_send_data(send_time+1);
 			if (send_time%8 == 7) begin
 				$display("UART sent %d bytes", send_time+1);
-				wait(tbuart.recv_state == 1);
+				wait(tbuart.recv_pattern == 8);
 			end
 		end		
 
-		#5000000;
+		#2000000;
 		$display("LA Test 1 passed");
 		$finish;		
 	end

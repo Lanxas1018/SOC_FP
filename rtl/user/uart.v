@@ -48,8 +48,10 @@ module uart #(
   always@(posedge wb_clk_i or posedge wb_rst_i)begin
       if(wb_rst_i)
         irq_cnt_r <= 0;
-      else if(irq)
+      else if(irq)begin
         irq_cnt_r <= irq_cnt_r + 1;
+        $display("-----------------Interrupt count: %d", irq_cnt_r + 1);
+      end
       else if(user_irq[0])
         irq_cnt_r <= 0;
   end
@@ -57,16 +59,16 @@ module uart #(
   always@(posedge wb_clk_i or posedge wb_rst_i)begin
       if(wb_rst_i || irq)
         cnt_r <= 0;
-      else if(cnt_r == 60000)
+      else if(cnt_r == 1000)
         cnt_r <= 0;
-      else
+      else if(irq_cnt_r > 0)
         cnt_r <= cnt_r + 1;
   end 
 
   always@(posedge wb_clk_i or posedge wb_rst_i)begin
       if(wb_rst_i)
         user_irq_r <= 0;
-      else if(irq_cnt_r == 2 || cnt_r == 60000)
+      else if(irq_cnt_r == 6 || cnt_r == 1000)
         user_irq_r <= 1;
       else
         user_irq_r <= 0;
